@@ -1,8 +1,15 @@
 {
   "version": 1,
   "circleName": "",
-  "updatedAt": 1795745977051,
-  "fixed": [],
+  "updatedAt": 1795746030797,
+  "fixed": [
+    {
+      "id": "mwyctl8nfj50r",
+      "month": 3,
+      "purpose": "スタジオ代金",
+      "amount": 100000
+    }
+  ],
   "years": {
     "2026": {
       "openingBalance": 114362,
