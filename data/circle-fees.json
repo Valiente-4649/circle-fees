@@ -1,11 +1,11 @@
 {
   "version": 1,
   "circleName": "",
-  "updatedAt": 1795745958947,
+  "updatedAt": 1795745977051,
   "fixed": [],
   "years": {
     "2026": {
-      "openingBalance": 0,
+      "openingBalance": 114362,
       "openingManual": true,
       "openingHalf": "first",
       "fees": {
