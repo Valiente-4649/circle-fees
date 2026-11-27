@@ -51,6 +51,9 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .bar{height:14px;background:#eef0f4;border-radius:99px;overflow:hidden;margin-bottom:6px}.bar>div{height:100%;background:var(--acc);border-radius:99px;transition:width .3s}.bar.over>div{background:var(--bad)}
 .mini{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}.mini div{background:#f8f9fc;border-radius:8px;padding:8px 10px}.mini span{display:block;font-size:11px;color:var(--sub)}.mini b{font-size:16px}
 .fixedbar{max-width:960px;margin:8px auto 0;font-size:13px;background:#fff7e0;border:1px solid #f1dc9c;color:#6b5200;border-radius:8px;padding:6px 10px}.fixedbar:empty{display:none}.fixedbar b{color:#4a3800}.fixedbar.ok{background:#e3f5ec;border-color:#b9e3cc;color:var(--good)}.fixedbar.ng{background:#fde8e8;border-color:#f3c0c0;color:var(--bad)}
+.robar{display:none;background:#eef0f4;border-color:var(--line);color:var(--sub)}.ro .robar{display:block}
+.ro #expForm,.ro #fxForm,.ro [data-edit],.ro [data-del],.ro [data-fedit],.ro [data-fdel],.ro #expForm~*,.ro .editonly{display:none!important}
+.ro #t-fee input,.ro #t-fee select{pointer-events:none;background:#f4f6fa}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw}
 #toast.on{opacity:1}
 .chk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink)}.chk input{width:auto}
@@ -68,6 +71,7 @@ details summary{cursor:pointer;font-size:14px;color:var(--acc)}
     </div>
     <span class="status" id="status">端末のみに保存</span>
   </div>
+  <div id="roBar" class="fixedbar robar">閲覧専用で表示しています。入力するには、管理者からもらった「入力用の共有リンク」で開いてください。</div>
   <div id="fixedBar" class="fixedbar"></div>
   <nav id="tabs">
     <button data-t="dash" class="on">ホーム</button>
@@ -91,7 +95,7 @@ details summary{cursor:pointer;font-size:14px;color:var(--acc)}
 
 <!-- 支出 -->
 <section id="t-exp">
-  <div class="box">
+  <div class="box editonly">
     <h2 id="expFormTitle">支出を追加</h2>
     <form id="expForm" class="grid">
       <div><label>日付</label><input type="date" id="exDate" required></div>
@@ -129,7 +133,7 @@ details summary{cursor:pointer;font-size:14px;color:var(--acc)}
 
 <!-- 固定費 -->
 <section id="t-fix">
-  <div class="box">
+  <div class="box editonly">
     <h2>毎年固定の支出を登録</h2>
     <p class="muted">毎年度に適用されます。使用予定月の<b>3ヶ月前の1日</b>に自動で差し引かれます（例：2月分 → 11/1）。4〜6月分は年度が始まる4/1に差し引かれます。</p>
     <form id="fxForm" class="grid">
@@ -178,6 +182,12 @@ details summary{cursor:pointer;font-size:14px;color:var(--acc)}
       <button class="btn d" id="ghClear">この端末から設定を消す</button>
     </div>
     <p class="muted">※トークンはこの端末のブラウザ内だけに保存され、GitHub以外には送信されません。</p>
+  </div>
+  <div class="box">
+    <h2>入力用の共有リンク</h2>
+    <p class="muted">このリンクを開いた人は、トークンを設定しなくてもその端末で入力できるようになります。ふつうのURLで開いた人は閲覧だけになります。リンクにはトークンが含まれるので、サークル内だけで共有してください。</p>
+    <button class="btn" id="shareMake">共有リンクを作る</button>
+    <div id="shareOut" style="margin-top:10px"></div>
   </div>
   <div class="box">
     <h2>GitHubの履歴から復元</h2>
@@ -280,6 +290,7 @@ function applyDate(fy,m){const d=new Date(calYear(fy,m),m-1-LEAD,1),st=new Date(
 const md=d=>`${d.getMonth()+1}/${d.getDate()}`;
 const isDue=(fy,f)=>new Date(today()+'T00:00:00')>=applyDate(fy,f.month);
 function applyDue(){
+  if(RO())return 0;
   const fy=fyOf(today());let n=0;
   for(const f of state.fixed){if(fixedPaid(fy,f)||!isDue(fy,f))continue;
     ensureY(fy).expenses.push({id:uid(),date:fixedDate(fy,f.month),purpose:f.purpose,amount:f.amount,category:'固定費',memo:'固定費（自動差引）',fixedId:f.id});n++}
@@ -296,14 +307,27 @@ function pushSnap(str,force){
     try{localStorage.setItem(LS_SNAP,JSON.stringify(s))}catch{s=s.slice(0,10);try{localStorage.setItem(LS_SNAP,JSON.stringify(s))}catch{}}}
 }
 function saveLocal(snap){if(snap)pushSnap(localStorage.getItem(LS));localStorage.setItem(LS,JSON.stringify(state))}
-function commit(msg){state.updatedAt=Date.now();saveLocal(true);render();schedulePush();if(msg)toast(msg)}
+function commit(msg){if(RO()){state=loadLocal();render();toast('閲覧専用のため変更できません');return}
+  state.updatedAt=Date.now();saveLocal(true);render();schedulePush();if(msg)toast(msg)}
 function replaceState(d,msg){pushSnap(localStorage.getItem(LS),true);state=d;saveLocal(false);render();if(msg)toast(msg);const n=applyDue();if(n)commit(`固定費${n}件を差し引きました`)}
 
 /* ---------- GitHub ---------- */
 let cfg=(()=>{try{return JSON.parse(localStorage.getItem(LS_CFG)||'null')}catch{return null}})()||{owner:'',repo:'',branch:'data',path:'data/circle-fees.json',token:'',auto:true};
+// 共有リンク（#join=...）で開かれたら設定を取り込み、URLからは消す
+let joined=null;
+(function(){const m=location.hash.match(/^#join=([A-Za-z0-9_-]+)$/);if(!m)return;
+  try{const j=JSON.parse(b64dec(m[1].replace(/-/g,'+').replace(/_/g,'/')));if(!j.t||!j.o||!j.r)throw 0;
+    if(cfg.owner&&(cfg.owner!==j.o||cfg.repo!==j.r)){localStorage.removeItem(LS_SHA);localStorage.setItem(LS_SYNC,'0')}
+    cfg={owner:j.o,repo:j.r,branch:j.b||'data',path:j.p||'data/circle-fees.json',token:j.t,auto:true};localStorage.setItem(LS_CFG,JSON.stringify(cfg));joined=true;
+  }catch{joined=false}
+  history.replaceState(null,'',location.pathname+location.search);})();
+// github.io で開かれていればURLからリポジトリを判定（閲覧専用表示用）
+const AUTO=(()=>{const h=location.hostname.toLowerCase();if(!h.endsWith('.github.io'))return null;
+  const seg=location.pathname.split('/').filter(Boolean)[0];return{owner:h.slice(0,-'.github.io'.length),repo:seg&&!seg.includes('.')?seg:h}})();
 let remoteSha=localStorage.getItem(LS_SHA)||null;
 let syncedAt=Number(localStorage.getItem(LS_SYNC))||0;
 const cfgOK=()=>cfg.owner&&cfg.repo&&cfg.token&&cfg.path;
+const RO=()=>!cfgOK()&&!!AUTO;
 function setSynced(sha,at){remoteSha=sha;syncedAt=at;localStorage.setItem(LS_SHA,sha||'');localStorage.setItem(LS_SYNC,String(at))}
 function b64enc(str){const b=new TextEncoder().encode(str);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)}
 function b64dec(s){const bin=atob(s.replace(/\s/g,''));return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)))}
@@ -311,7 +335,7 @@ const cPath=()=>'contents/'+cfg.path.split('/').map(encodeURIComponent).join('/'
 async function gh(url,opt={}){
   const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}${url?'/'+url:''}`,{
     method:opt.method||'GET',cache:'no-store',
-    headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.body?{'Content-Type':'application/json'}:{})},
+    headers:{...(cfg.token?{'Authorization':'Bearer '+cfg.token}:{}),'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.body?{'Content-Type':'application/json'}:{})},
     body:opt.body?JSON.stringify(opt.body):undefined});
   if(!r.ok){let m=r.status+'';try{m=(await r.json()).message||m}catch{}const e=new Error(m);e.status=r.status;throw e}
   return r.json();
@@ -399,6 +423,7 @@ function renderBar(){
   el.innerHTML=`固定費：これから <b>${yen(amt)}</b> 必要（年間 ${yen(fixedTotal())}）｜次は <b>${md(applyDate(curFY,nx.month))}</b> に「${esc(nx.purpose)}」${yen(nx.amount)}`+(rest-amt<0?`｜<b>${yen(amt-rest)} 足りません</b>`:'');
 }
 function render(){
+  document.body.classList.toggle('ro',RO());
   renderBar();
   $('#title').textContent=state.circleName?state.circleName+' サークル費':'サークル費管理';
   $('#yearLabel').textContent=`${curFY}年度`;
@@ -606,10 +631,38 @@ $('#importFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';
   try{const d=normalize(JSON.parse(await f.text()));if(confirm('このファイルの内容で置き換えますか？\n（今のデータは自動バックアップに残ります）')){replaceState(d);commit('読み込みました')}}
   catch(err){toast('読み込めませんでした：'+err.message)}};
 
+/* 閲覧専用：トークンなしで公開データを読む */
+async function pullPublic(){
+  if(!AUTO)return;setStatus('読み込み中…','busy');
+  try{
+    const r=await fetch(`https://api.github.com/repos/${AUTO.owner}/${AUTO.repo}/contents/${(cfg.path||'data/circle-fees.json').split('/').map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(cfg.branch||'data')}`,{cache:'no-store',headers:{'Accept':'application/vnd.github+json'}});
+    if(r.status===404){setStatus('閲覧専用（データなし）');return}
+    if(!r.ok)throw new Error(r.status===403?'アクセスが集中しています。しばらくしてから開き直してください':String(r.status));
+    const j=await r.json(),d=normalize(JSON.parse(b64dec(j.content)));
+    if(d.updatedAt!==state.updatedAt){state=d;saveLocal(false);render()}
+    setSynced(j.sha,d.updatedAt);setStatus('閲覧専用・最新 '+fmtTime(Date.now()),'ok');
+  }catch(e){setStatus('閲覧専用（読込失敗）','err');toast('データを読み込めませんでした：'+e.message)}
+}
+$('#shareMake').onclick=async()=>{
+  if(!cfgOK())return toast('先にGitHubの設定（トークン）を入力してください');
+  const code=b64enc(JSON.stringify({o:cfg.owner,r:cfg.repo,b:cfg.branch,p:cfg.path,t:cfg.token})).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const base=location.hostname.endsWith('.github.io')?location.origin+location.pathname.replace(/index\.html$/,''):`https://${cfg.owner.toLowerCase()}.github.io/${cfg.repo}/`;
+  const link=base+'#join='+code;
+  $('#shareOut').innerHTML=`<input readonly id="shareLink" value="${esc(link)}"><div class="row" style="margin-top:8px"><button class="btn p" id="shareCopy">コピー</button><span class="muted">サークルのグループなど、メンバーだけが見られる場所で共有してください。</span></div>`;
+  $('#shareCopy').onclick=async()=>{try{await navigator.clipboard.writeText(link);toast('コピーしました')}catch{$('#shareLink').select();toast('長押し（右クリック）でコピーしてください')}};
+};
+// 他の人の入力を反映するため、定期的・画面に戻ったときに読み直す
+function refresh(){if(document.hidden)return;if(cfgOK()){if(!timer&&!pushing)pullRemote(false)}else if(AUTO)pullPublic()}
+setInterval(refresh,120000);
+window.addEventListener('hashchange',()=>{if(/^#join=/.test(location.hash))location.reload()});
+document.addEventListener('visibilitychange',refresh);
+
 /* 起動 */
 fillCfg();resetExpForm();render();
+if(joined)toast('共有リンクを読み込みました。この端末で入力できます');
+if(joined===false)toast('共有リンクが正しくありません');
 {const n=applyDue();if(n)commit(`固定費${n}件を差し引きました`)}
-if(cfgOK())pullRemote(false);
+if(cfgOK())pullRemote(false);else if(AUTO)pullPublic();
 </script>
 </body>
 </html>
