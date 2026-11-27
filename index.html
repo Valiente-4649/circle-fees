@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>サークル費管理</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--ink:#1d2433;--sub:#6b7489;--line:#e2e6ee;--acc:#2f6fed;--acc2:#e8efff;--good:#1a9b5b;--bad:#d64545;--warn:#c98a00;--prev:#b8c0cf}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;position:sticky;top:0;z-index:5}
+.hrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:960px;margin:0 auto}
+h1{font-size:18px;margin:0;flex:1;min-width:160px}
+.yearsel{display:flex;align-items:center;gap:6px}
+.yearsel b{font-size:16px;min-width:150px;text-align:center}
+.status{font-size:12px;padding:3px 8px;border-radius:99px;background:#eef0f4;color:var(--sub)}
+.status.ok{background:#e3f5ec;color:var(--good)}.status.err{background:#fde8e8;color:var(--bad)}.status.busy{background:#fff4d6;color:var(--warn)}
+nav{display:flex;gap:4px;overflow-x:auto;max-width:960px;margin:10px auto 0}
+nav button{border:0;background:none;padding:8px 12px;border-radius:8px;font-size:14px;color:var(--sub);white-space:nowrap;cursor:pointer}
+nav button.on{background:var(--acc2);color:var(--acc);font-weight:600}
+main{max-width:960px;margin:0 auto;padding:16px}
+section{display:none}section.on{display:block}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font-size:16px;margin:0 0 12px}h3{font-size:14px;margin:18px 0 8px;color:var(--sub)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.card .l{font-size:12px;color:var(--sub)}.card .v{font-size:20px;font-weight:700;margin-top:4px}.card .s{font-size:11px;color:var(--sub);margin-top:2px}
+.card.big{border-color:var(--acc);background:var(--acc2)}
+.neg{color:var(--bad)!important}.pos{color:var(--good)}
+label{display:block;font-size:12px;color:var(--sub);margin-bottom:3px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:15px;background:#fff;color:var(--ink)}
+input:focus,select:focus{outline:2px solid var(--acc2);border-color:var(--acc)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-items:end}
+.btn{border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:8px;font-size:14px;cursor:pointer;color:var(--ink)}
+.btn.p{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn.s{padding:4px 9px;font-size:12px}.btn.d{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:default}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:12px;color:var(--sub);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tw{overflow-x:auto}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:#eef0f4;color:var(--sub)}
+.tag.paid{background:#e3f5ec;color:var(--good)}.tag.late{background:#fde8e8;color:var(--bad)}
+.muted{color:var(--sub);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.feetotal{font-size:18px;font-weight:700;margin-top:8px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--sub);margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.mhead td{background:#f8f9fc;font-size:12px;color:var(--sub);font-weight:600}
+.bar{height:14px;background:#eef0f4;border-radius:99px;overflow:hidden;margin-bottom:6px}.bar>div{height:100%;background:var(--acc);border-radius:99px;transition:width .3s}.bar.over>div{background:var(--bad)}
+.mini{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}.mini div{background:#f8f9fc;border-radius:8px;padding:8px 10px}.mini span{display:block;font-size:11px;color:var(--sub)}.mini b{font-size:16px}
+.fixedbar{max-width:960px;margin:8px auto 0;font-size:13px;background:#fff7e0;border:1px solid #f1dc9c;color:#6b5200;border-radius:8px;padding:6px 10px}.fixedbar:empty{display:none}.fixedbar b{color:#4a3800}.fixedbar.ok{background:#e3f5ec;border-color:#b9e3cc;color:var(--good)}.fixedbar.ng{background:#fde8e8;border-color:#f3c0c0;color:var(--bad)}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw}
+#toast.on{opacity:1}
+.chk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink)}.chk input{width:auto}
+details summary{cursor:pointer;font-size:14px;color:var(--acc)}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1 id="title">サークル費管理</h1>
+    <div class="yearsel">
+      <button class="btn s" id="prevY">◀</button>
+      <b id="yearLabel"></b>
+      <button class="btn s" id="nextY">▶</button>
+    </div>
+    <span class="status" id="status">端末のみに保存</span>
+  </div>
+  <div id="fixedBar" class="fixedbar"></div>
+  <nav id="tabs">
+    <button data-t="dash" class="on">ホーム</button>
+    <button data-t="exp">支出</button>
+    <button data-t="fee">支給額</button>
+    <button data-t="fix">固定費</button>
+    <button data-t="cmp">前年比較</button>
+    <button data-t="set">保存・設定</button>
+  </nav>
+</header>
+
+<main>
+<!-- ホーム -->
+<section id="t-dash" class="on">
+  <div id="halfBoxes"></div>
+  <h3>年度全体</h3>
+  <div class="cards" id="cards"></div>
+  <div class="box"><h2>今年度の固定費</h2><div id="fixedStatus"></div></div>
+  <div class="box"><h2>最近の支出</h2><div id="recent"></div></div>
+</section>
+
+<!-- 支出 -->
+<section id="t-exp">
+  <div class="box">
+    <h2 id="expFormTitle">支出を追加</h2>
+    <form id="expForm" class="grid">
+      <div><label>日付</label><input type="date" id="exDate" required></div>
+      <div style="grid-column:span 2"><label>使用用途</label><input id="exPurpose" list="purposeList" required placeholder="例：ギター購入"></div>
+      <div><label>金額（円）</label><input type="number" id="exAmount" min="0" step="1" inputmode="numeric" required></div>
+      <div><label>分類</label><select id="exCat"></select></div>
+      <div style="grid-column:span 2"><label>メモ（任意）</label><input id="exMemo"></div>
+      <div class="row"><button class="btn p" id="exSubmit">追加</button><button type="button" class="btn" id="exCancel" style="display:none">キャンセル</button></div>
+    </form>
+    <datalist id="purposeList"></datalist>
+  </div>
+  <div class="box"><h2>支出一覧</h2><div id="expList"></div></div>
+</section>
+
+<!-- 会費・繰越 -->
+<section id="t-fee">
+  <div class="box">
+    <h2>前期サークル費（学校から支給）</h2>
+    <div class="grid">
+      <div><label>支給額（円）</label><input type="number" min="0" inputmode="numeric" id="f1amount"></div>
+      <div><label>支給日（任意）</label><input type="date" id="f1date"></div>
+    </div>
+    <div class="feetotal" id="f1total"></div>
+  </div>
+  <div class="box">
+    <h2>後期サークル費（学校から支給）</h2>
+    <div class="grid">
+      <div><label>支給額（円）</label><input type="number" min="0" inputmode="numeric" id="f2amount"></div>
+      <div><label>支給日（任意）</label><input type="date" id="f2date"></div>
+    </div>
+    <div class="feetotal" id="f2total"></div>
+  </div>
+  <div class="box"><h2>年度の途中から使い始める場合</h2><div id="openingBox"></div></div>
+</section>
+
+<!-- 固定費 -->
+<section id="t-fix">
+  <div class="box">
+    <h2>毎年固定の支出を登録</h2>
+    <p class="muted">毎年度に適用されます。使用予定月の<b>3ヶ月前の1日</b>に自動で差し引かれます（例：2月分 → 11/1）。4〜6月分は年度が始まる4/1に差し引かれます。</p>
+    <form id="fxForm" class="grid">
+      <div><label>月</label><select id="fxMonth"></select></div>
+      <div style="grid-column:span 2"><label>用途</label><input id="fxPurpose" required placeholder="例：スタジオ年間契約料"></div>
+      <div><label>金額（円）</label><input type="number" min="0" inputmode="numeric" id="fxAmount" required></div>
+      <div><button class="btn p">登録</button></div>
+    </form>
+  </div>
+  <div class="box"><h2>登録済みの固定費</h2><div id="fxList"></div></div>
+</section>
+
+<!-- 前年比較 -->
+<section id="t-cmp">
+  <div class="box"><h2 id="cmpTitle"></h2><div class="tw" id="cmpSummary"></div></div>
+  <div class="box"><h2>月別の支出</h2>
+    <div class="legend"><span><i style="background:var(--prev)"></i>前年度</span><span><i style="background:var(--acc)"></i>今年度</span></div>
+    <div id="cmpChart"></div><div class="tw" id="cmpMonth"></div></div>
+  <div class="box"><h2>分類別の支出</h2><div class="tw" id="cmpCat"></div></div>
+  <div class="box"><h2>用途別の支出</h2><div class="tw" id="cmpPurpose"></div></div>
+</section>
+
+<!-- 設定 -->
+<section id="t-set">
+  <div class="box">
+    <h2>基本設定</h2>
+    <div class="grid"><div style="grid-column:span 2"><label>サークル名</label><input id="circleName" placeholder="例：〇〇大学軽音サークル"></div></div>
+  </div>
+  <div class="box">
+    <h2>GitHubに保存</h2>
+    <p class="muted">変更のたびにGitHubへ自動でコミットされます。履歴が全部残るので、間違えて消しても下の「GitHubの履歴」から戻せます。</p>
+    <div class="grid">
+      <div><label>ユーザー名（owner）</label><input id="ghOwner" autocomplete="off"></div>
+      <div><label>リポジトリ名</label><input id="ghRepo" autocomplete="off" placeholder="circle-fees-data"></div>
+      <div><label>保存先ブランチ（サイトとは別）</label><input id="ghBranch" placeholder="data"></div>
+      <div><label>保存ファイル</label><input id="ghPath" placeholder="data/circle-fees.json"></div>
+      <div style="grid-column:span 2"><label>アクセストークン</label><input id="ghToken" type="password" autocomplete="off" placeholder="github_pat_..."></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="chk"><input type="checkbox" id="ghAuto" checked>変更したら自動で保存</label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn p" id="ghSave">設定を保存して接続</button>
+      <button class="btn" id="ghPush">今すぐGitHubに保存</button>
+      <button class="btn" id="ghPull">GitHubから読み込む</button>
+      <button class="btn d" id="ghClear">この端末から設定を消す</button>
+    </div>
+    <p class="muted">※トークンはこの端末のブラウザ内だけに保存され、GitHub以外には送信されません。</p>
+  </div>
+  <div class="box">
+    <h2>GitHubの履歴から復元</h2>
+    <button class="btn" id="histLoad">履歴を表示</button>
+    <div class="tw" id="histList" style="margin-top:10px"></div>
+  </div>
+  <div class="box">
+    <h2>バックアップファイル</h2>
+    <div class="row">
+      <button class="btn" id="exportBtn">JSONでダウンロード</button>
+      <label class="btn" style="margin:0;color:var(--ink);font-size:14px">JSONを読み込む<input type="file" id="importFile" accept=".json,application/json" style="display:none"></label>
+    </div>
+    <h3>この端末内の自動バックアップ</h3>
+    <div class="tw" id="snapList"></div>
+  </div>
+</section>
+</main>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const FM=[4,5,6,7,8,9,10,11,12,1,2,3];
+const CATS=['楽器・機材','消耗品（弦・ケーブル等）','修理・メンテナンス','スタジオ代','ライブ・イベント','固定費','交通費','飲食','印刷・広報','その他'];
+const LS='cf_data',LS_CFG='cf_gh',LS_SNAP='cf_snaps',LS_SHA='cf_sha',LS_SYNC='cf_synced';
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const yen=n=>(n<0?'-':'')+'¥'+Math.abs(Math.round(n)).toLocaleString('ja-JP');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+const fyOf=s=>{const[y,m]=s.split('-').map(Number);return m>=4?y:y-1};
+const monthOf=s=>Number(s.split('-')[1]);
+const calYear=(fy,m)=>m>=4?fy:fy+1;
+const fmIdx=m=>FM.indexOf(m);
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const fmtTime=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`};
+
+/* ---------- データ ---------- */
+function emptyData(){return{version:1,circleName:'',updatedAt:0,fixed:[],years:{}}}
+function emptyYear(){return{openingBalance:0,openingManual:false,openingHalf:'first',fees:{first:{amount:0,date:''},second:{amount:0,date:''}},expenses:[]}}
+function num(v){if(v==null||v==='')return 0;const n=Number(v);if(!isFinite(n))throw new Error('数値が不正です');return n}
+// 読み込み・保存前に必ず通すチェック（壊れたデータを保存しない）
+function normalize(d){
+  if(!d||typeof d!=='object'||Array.isArray(d))throw new Error('データ形式が不正です');
+  const o={version:1,circleName:String(d.circleName||''),updatedAt:Number(d.updatedAt)||0,fixed:[],years:{}};
+  if(d.fixed!=null&&!Array.isArray(d.fixed))throw new Error('固定費データが不正です');
+  for(const f of d.fixed||[]){const m=Number(f.month);if(!(m>=1&&m<=12))throw new Error('固定費の月が不正です');o.fixed.push({id:String(f.id||uid()),month:m,purpose:String(f.purpose||''),amount:num(f.amount)})}
+  if(d.years!=null&&(typeof d.years!=='object'||Array.isArray(d.years)))throw new Error('年度データが不正です');
+  for(const[k,y]of Object.entries(d.years||{})){
+    if(!/^\d{4}$/.test(k)||!y||typeof y!=='object')throw new Error('年度データが不正です');
+    const e=emptyYear();e.openingBalance=num(y.openingBalance);e.openingManual=!!y.openingManual;e.openingHalf=y.openingHalf==='second'?'second':'first';
+    for(const p of['first','second']){const f=(y.fees||{})[p]||{};e.fees[p]={amount:f.amount!=null?num(f.amount):num(f.unit)*num(f.count),date:String(f.date||'')}}
+    if(y.expenses!=null&&!Array.isArray(y.expenses))throw new Error('支出データが不正です');
+    for(const x of y.expenses||[]){
+      if(typeof x.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.date))throw new Error('支出の日付が不正です');
+      e.expenses.push({id:String(x.id||uid()),date:x.date,purpose:String(x.purpose||''),amount:num(x.amount),category:String(x.category||'その他'),memo:String(x.memo||''),fixedId:x.fixedId?String(x.fixedId):null});
+    }
+    o.years[k]=e;
+  }
+  // 旧版データ：前年度なしで入力された開始残高は「途中から使い始め」とみなす
+  for(const k of Object.keys(o.years)){const e=o.years[k];if(!e.openingManual&&e.openingBalance&&!o.years[+k-1])e.openingManual=true}
+  return o;
+}
+function loadLocal(){
+  try{const s=localStorage.getItem(LS);if(s)return normalize(JSON.parse(s))}catch(e){
+    // 壊れていたら自動バックアップから復旧
+    for(const sn of getSnaps()){try{const d=normalize(JSON.parse(sn.d));setTimeout(()=>toast('保存データが壊れていたため、自動バックアップから復旧しました'),300);return d}catch{}}
+  }
+  return emptyData();
+}
+let state=loadLocal();
+let curFY=fyOf(today());
+
+const Y=y=>state.years[y]||emptyYear();
+function ensureY(y){if(!state.years[y])state.years[y]=emptyYear();return state.years[y]}
+const feeAmt=f=>f.amount||0;
+const income=y=>feeAmt(Y(y).fees.first)+feeAmt(Y(y).fees.second);
+const spent=y=>sum(Y(y).expenses.map(e=>e.amount));
+// 大学のサークル費は繰越不可：毎年度0円から。途中から使い始めた年だけ開始時点の残高を使う
+const opening=y=>{const yr=state.years[y];return yr&&yr.openingManual?yr.openingBalance:0};
+const budget=y=>opening(y)+income(y);
+const ending=y=>budget(y)-spent(y);
+const halfOf=m=>(m>=4&&m<=9)?'first':'second';
+const HALF={
+  first:{name:'前期',label:'4〜9月',months:[4,5,6,7,8,9],start:fy=>new Date(fy,3,1),end:fy=>new Date(fy,8,30)},
+  second:{name:'後期',label:'10〜3月',months:[10,11,12,1,2,3],start:fy=>new Date(fy,9,1),end:fy=>new Date(fy+1,2,31)}};
+const hOpening=(y,h)=>{const yr=state.years[y];return yr&&yr.openingManual&&(yr.openingHalf||'first')===h?yr.openingBalance:0};
+// 前期の残りは後期の予算に追加される（年度末で消える）
+const hCarry=(y,h)=>h==='second'?hRest(y,'first'):0;
+const hBudget=(y,h)=>feeAmt(Y(y).fees[h])+hOpening(y,h)+hCarry(y,h);
+const hExp=(y,h)=>Y(y).expenses.filter(e=>halfOf(monthOf(e.date))===h);
+const hSpent=(y,h)=>sum(hExp(y,h).map(e=>e.amount));
+function hRest(y,h){return hBudget(y,h)-hSpent(y,h)}
+const fixedPaid=(y,f)=>Y(y).expenses.find(e=>e.fixedId===f.id);
+const fixedRemain=y=>sum(state.fixed.filter(f=>!fixedPaid(y,f)).map(f=>f.amount));
+const fixedDate=(fy,m)=>`${calYear(fy,m)}-${pad(m)}-01`;
+// 固定費は使用予定月の3ヶ月前の1日に差し引く（4〜6月分は年度開始の4/1）
+const LEAD=3;
+function applyDate(fy,m){const d=new Date(calYear(fy,m),m-1-LEAD,1),st=new Date(fy,3,1);return d<st?st:d}
+const md=d=>`${d.getMonth()+1}/${d.getDate()}`;
+const isDue=(fy,f)=>new Date(today()+'T00:00:00')>=applyDate(fy,f.month);
+function applyDue(){
+  const fy=fyOf(today());let n=0;
+  for(const f of state.fixed){if(fixedPaid(fy,f)||!isDue(fy,f))continue;
+    ensureY(fy).expenses.push({id:uid(),date:fixedDate(fy,f.month),purpose:f.purpose,amount:f.amount,category:'固定費',memo:'固定費（自動差引）',fixedId:f.id});n++}
+  return n;
+}
+const fixedTotal=()=>sum(state.fixed.map(f=>f.amount));
+const fixedPending=y=>state.fixed.filter(f=>!fixedPaid(y,f));
+
+/* ---------- ローカル保存・自動バックアップ ---------- */
+function getSnaps(){try{return JSON.parse(localStorage.getItem(LS_SNAP)||'[]')}catch{return[]}}
+function pushSnap(str,force){
+  if(!str)return;let s=getSnaps();
+  if(force||!s[0]||Date.now()-s[0].t>3*60*1000){s.unshift({t:Date.now(),d:str});s=s.slice(0,30);
+    try{localStorage.setItem(LS_SNAP,JSON.stringify(s))}catch{s=s.slice(0,10);try{localStorage.setItem(LS_SNAP,JSON.stringify(s))}catch{}}}
+}
+function saveLocal(snap){if(snap)pushSnap(localStorage.getItem(LS));localStorage.setItem(LS,JSON.stringify(state))}
+function commit(msg){state.updatedAt=Date.now();saveLocal(true);render();schedulePush();if(msg)toast(msg)}
+function replaceState(d,msg){pushSnap(localStorage.getItem(LS),true);state=d;saveLocal(false);render();if(msg)toast(msg);const n=applyDue();if(n)commit(`固定費${n}件を差し引きました`)}
+
+/* ---------- GitHub ---------- */
+let cfg=(()=>{try{return JSON.parse(localStorage.getItem(LS_CFG)||'null')}catch{return null}})()||{owner:'',repo:'',branch:'data',path:'data/circle-fees.json',token:'',auto:true};
+let remoteSha=localStorage.getItem(LS_SHA)||null;
+let syncedAt=Number(localStorage.getItem(LS_SYNC))||0;
+const cfgOK=()=>cfg.owner&&cfg.repo&&cfg.token&&cfg.path;
+function setSynced(sha,at){remoteSha=sha;syncedAt=at;localStorage.setItem(LS_SHA,sha||'');localStorage.setItem(LS_SYNC,String(at))}
+function b64enc(str){const b=new TextEncoder().encode(str);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)}
+function b64dec(s){const bin=atob(s.replace(/\s/g,''));return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)))}
+const cPath=()=>'contents/'+cfg.path.split('/').map(encodeURIComponent).join('/');
+async function gh(url,opt={}){
+  const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}${url?'/'+url:''}`,{
+    method:opt.method||'GET',cache:'no-store',
+    headers:{'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.body?{'Content-Type':'application/json'}:{})},
+    body:opt.body?JSON.stringify(opt.body):undefined});
+  if(!r.ok){let m=r.status+'';try{m=(await r.json()).message||m}catch{}const e=new Error(m);e.status=r.status;throw e}
+  return r.json();
+}
+// 保存用ブランチがなければ、既定ブランチから自動で作る
+async function ensureBranch(){
+  const b=cfg.branch||'data';
+  try{await gh('git/ref/heads/'+encodeURIComponent(b));return false}catch(e){if(e.status!==404)throw e}
+  const repo=await gh('');const base=await gh('git/ref/heads/'+encodeURIComponent(repo.default_branch));
+  await gh('git/refs',{method:'POST',body:{ref:'refs/heads/'+b,sha:base.object.sha}});return true;
+}
+async function ghGet(ref){try{return await gh(cPath()+'?ref='+encodeURIComponent(ref))}catch(e){if(e.status===404)return null;throw e}}
+function setStatus(t,c=''){const el=$('#status');el.textContent=t;el.className='status '+c}
+let timer=null,pushing=false,again=false;
+function schedulePush(){
+  if(!cfgOK()){setStatus('端末のみに保存');return}
+  if(!cfg.auto){setStatus('未保存の変更あり','busy');return}
+  clearTimeout(timer);setStatus('保存待ち…','busy');timer=setTimeout(pushRemote,2000);
+}
+async function pushRemote(){
+  if(!cfgOK())return;
+  if(pushing){again=true;return}
+  pushing=true;clearTimeout(timer);timer=null;setStatus('保存中…','busy');
+  try{
+    normalize(state);
+    const at=state.updatedAt;
+    const body={message:'サークル費データ更新 '+new Date().toLocaleString('ja-JP'),content:b64enc(JSON.stringify(state,null,2)),branch:cfg.branch||'data'};
+    if(remoteSha)body.sha=remoteSha;else await ensureBranch();
+    let r;
+    try{r=await gh(cPath(),{method:'PUT',body})}
+    catch(e){
+      if(e.status!==409&&e.status!==422)throw e;
+      const cur=await ghGet(cfg.branch||'data');if(!cur)throw e;
+      const remote=normalize(JSON.parse(b64dec(cur.content)));
+      if(remote.updatedAt!==syncedAt&&remote.updatedAt!==at){
+        if(!confirm('GitHub上に、別の端末で保存された新しい内容があります。\n\nOK：この端末の内容で上書き保存（GitHubの履歴には残ります）\nキャンセル：GitHubの内容を読み込む')){
+          setSynced(cur.sha,remote.updatedAt);replaceState(remote,'GitHubの内容を読み込みました');setStatus('GitHubと同期済み','ok');return;
+        }
+      }
+      body.sha=cur.sha;r=await gh(cPath(),{method:'PUT',body});
+    }
+    setSynced(r.content.sha,at);
+    setStatus('GitHub保存済み '+fmtTime(Date.now()),'ok');
+  }catch(e){setStatus('保存失敗','err');toast('GitHubへの保存に失敗：'+e.message+'（データは端末に保存済み）')}
+  finally{pushing=false;if(again){again=false;pushRemote()}}
+}
+async function pullRemote(manual){
+  if(!cfgOK()){if(manual)toast('GitHubの設定を入力してください');return}
+  setStatus('読み込み中…','busy');
+  try{
+    if(await ensureBranch())toast(`保存用の「${cfg.branch}」ブランチを作成しました`);
+    const r=await ghGet(cfg.branch||'data');
+    if(!r){remoteSha=null;if(state.updatedAt>0){await pushRemote();toast('GitHubに保存ファイルを作成しました')}else setStatus('GitHub接続OK（データなし）','ok');return}
+    const remote=normalize(JSON.parse(b64dec(r.content)));
+    const localChanged=state.updatedAt!==syncedAt, remoteChanged=remote.updatedAt!==syncedAt;
+    if(remote.updatedAt===state.updatedAt){setSynced(r.sha,remote.updatedAt);setStatus('GitHubと同期済み','ok');if(manual)toast('最新の状態です');return}
+    let takeRemote;
+    if(manual)takeRemote=confirm('GitHubの内容でこの端末のデータを置き換えますか？\n（今のデータは自動バックアップに残ります）');
+    else if(remoteChanged&&!localChanged)takeRemote=true;
+    else if(localChanged&&!remoteChanged)takeRemote=false;
+    else takeRemote=state.updatedAt===0||confirm('この端末とGitHubの両方に未同期の変更があります。\n\nOK：GitHubの内容を読み込む（この端末の内容はバックアップに残ります）\nキャンセル：この端末の内容でGitHubを上書き');
+    if(takeRemote){setSynced(r.sha,remote.updatedAt);replaceState(remote,'GitHubから読み込みました');setStatus('GitHubと同期済み','ok')}
+    else{remoteSha=r.sha;await pushRemote()}
+  }catch(e){setStatus('接続エラー','err');toast('GitHubに接続できません：'+e.message)}
+}
+window.addEventListener('beforeunload',e=>{if(timer||pushing){e.preventDefault();e.returnValue=''}});
+
+/* ---------- 画面 ---------- */
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('on'),3200)}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('main section').forEach(s=>s.classList.toggle('on',s.id==='t-'+b.dataset.t));
+});
+$('#prevY').onclick=()=>{curFY--;render()};
+$('#nextY').onclick=()=>{curFY++;render()};
+$('#exCat').innerHTML=CATS.map(c=>`<option>${c}</option>`).join('');
+$('#fxMonth').innerHTML=FM.map(m=>`<option value="${m}">${m}月</option>`).join('');
+
+function renderBar(){
+  const el=$('#fixedBar');if(!state.fixed.length){el.innerHTML='';return}
+  const pend=fixedPending(curFY).sort((a,b)=>applyDate(curFY,a.month)-applyDate(curFY,b.month)),amt=sum(pend.map(f=>f.amount)),rest=ending(curFY);
+  if(!pend.length){el.className='fixedbar ok';el.innerHTML=`固定費：${curFY}年度の <b>${yen(fixedTotal())}</b> はすべて差引済み`;return}
+  const nx=pend[0];
+  el.className='fixedbar'+(rest-amt<0?' ng':'');
+  el.innerHTML=`固定費：これから <b>${yen(amt)}</b> 必要（年間 ${yen(fixedTotal())}）｜次は <b>${md(applyDate(curFY,nx.month))}</b> に「${esc(nx.purpose)}」${yen(nx.amount)}`+(rest-amt<0?`｜<b>${yen(amt-rest)} 足りません</b>`:'');
+}
+function render(){
+  renderBar();
+  $('#title').textContent=state.circleName?state.circleName+' サークル費':'サークル費管理';
+  $('#yearLabel').textContent=`${curFY}年度`;
+  $('#yearLabel').title=`${curFY}年4月〜${curFY+1}年3月`;
+  renderDash();renderExp();renderFee();renderFix();renderCmp();renderSet();
+}
+function card(l,v,s='',cls=''){return`<div class="card ${cls}"><div class="l">${l}</div><div class="v ${v<0?'neg':''}">${yen(v)}</div>${s?`<div class="s">${s}</div>`:''}</div>`}
+function halfBox(h){
+  const H=HALF[h],y=Y(curFY),fee=feeAmt(y.fees[h]),bud=hBudget(curFY,h),ex=hExp(curFY,h),sp=sum(ex.map(e=>e.amount)),rest=bud-sp;
+  const fxDone=sum(ex.filter(e=>e.fixedId).map(e=>e.amount));
+  const fxPlan=sum(state.fixed.filter(f=>halfOf(f.month)===h&&!fixedPaid(curFY,f)).map(f=>f.amount));
+  const now=new Date(today()+'T00:00:00'),st=H.start(curFY),en=H.end(curFY);
+  const phase=now<st?'before':now>en?'past':'now';
+  const dl=Math.round((en-now)/864e5)+1;
+  const ml=phase==='now'?H.months.length-H.months.indexOf(monthOf(today())):phase==='before'?H.months.length:0;
+  const rate=bud>0?sp/bud*100:0, endStr=`${en.getMonth()+1}/${en.getDate()}`;
+  let msg;
+  const carry=hCarry(curFY,h);
+  if(fee===0&&!hOpening(curFY,h))msg=`<p class="muted">${H.name}の支給額が未入力です。${h==='second'&&carry>0?`前期の残り ${yen(carry)} は後期の予算に追加されています。`:''}</p>`;
+  else if(rest<0)msg=`<p class="neg"><b>${H.name}の予算を ${yen(-rest)} オーバーしています。</b></p>`;
+  else if(h==='first'&&rest>0){
+    const res=phase==='past'?0:sum(hExp(curFY,'second').filter(e=>e.fixedId).map(e=>e.amount));
+    msg=`<p>残り <b>${yen(rest)}</b>${phase==='past'?' は後期の予算に追加されました。':'。使わなかった分は後期の予算に追加されます。'}</p>`+
+      (res>0?`<p class="muted">後期の固定費 ${yen(res)} がすでに差し引かれているため、前期中に実際に使えるのは <b class="${rest-res<0?'neg':''}">${yen(rest-res)}</b> です。</p>`:'');
+  }
+  else if(phase==='past')msg=rest>0?`<p class="neg">この年度は <b>${yen(rest)}</b> 使い残しました（繰越不可）。</p>`:'<p class="pos"><b>この年度の予算を使い切りました！</b></p>';
+  else if(rest===0)msg='<p class="pos"><b>ぴったり使い切りました！</b></p>';
+  else{const pf=h==='second'?sum(fixedPending(curFY).map(f=>f.amount)):0,free=rest-pf;
+    msg=`<p>${phase==='now'?`${H.name}末（${endStr}）まで<b>あと${dl}日</b>。`:`${H.name}はまだ始まっていません。`}残り <b>${yen(rest)}</b>${pf?`（これから差し引かれる固定費 ${yen(pf)} を除くと <b class="${free<0?'neg':''}">${yen(free)}</b>）`:''}${ml>0&&free>0?`。1ヶ月あたり約 <b>${yen(Math.floor(free/ml))}</b> 使えば使い切れます`:''}。</p>`}
+  const tag=phase==='now'?'<span class="tag paid">期間中</span>':phase==='past'?'<span class="tag">終了</span>':'<span class="tag">これから</span>';
+  return `<div class="box"><div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">${H.name}（${H.label}）</h2>${tag}</div>
+    <div class="bar ${rate>100?'over':''}"><div style="width:${Math.min(100,rate)}%"></div></div>
+    <div class="row" style="justify-content:space-between;font-size:13px;color:var(--sub)"><span>使用率 ${rate.toFixed(0)}%</span><span>${yen(sp)} / ${yen(bud)}${h==='second'?'（前期の残りを含む）':''}</span></div>
+    <div class="mini">${h==='second'?`<div><span>前期からの追加</span><b class="${carry<0?'neg':''}">${yen(carry)}</b></div>`:''}<div><span>支給額${hOpening(curFY,h)?'＋開始時残高':''}</span><b>${yen(fee+hOpening(curFY,h))}</b></div><div><span>固定費（差引済）</span><b>${yen(fxDone)}</b></div><div><span>その他の支出</span><b>${yen(sp-fxDone)}</b></div><div><span>残り</span><b class="${rest<0?'neg':''}">${yen(rest)}</b></div></div>
+    ${msg}</div>`;
+}
+function renderDash(){
+  const y=Y(curFY),bud=budget(curFY),sp=spent(curFY);
+  $('#halfBoxes').innerHTML=halfBox('first')+halfBox('second');
+  $('#cards').innerHTML=card('年間の予算',bud,`前期 ${yen(feeAmt(y.fees.first))} / 後期 ${yen(feeAmt(y.fees.second))}`)+card('年間の使用額',sp,`${y.expenses.length}件`)+card('年度末までの残り',bud-sp,'3/31までに使い切る金額','big');
+  // 固定費
+  const fx=[...state.fixed].sort((a,b)=>fmIdx(a.month)-fmIdx(b.month));
+  const pend=fixedPending(curFY),pendAmt=sum(pend.map(f=>f.amount)),doneAmt=fixedTotal()-pendAmt;
+  $('#fixedStatus').innerHTML=fx.length?`<div class="mini" style="margin:0 0 12px"><div><span>年間で必要な固定費</span><b>${yen(fixedTotal())}</b></div><div><span>差引済</span><b>${yen(doneAmt)}</b></div><div><span>これから差し引かれる</span><b>${yen(pendAmt)}</b></div><div><span>固定費を全部引いた残り</span><b class="${bud-sp-pendAmt<0?'neg':''}">${yen(bud-sp-pendAmt)}</b></div></div>
+    <div class="tw"><table><tr><th>使用月</th><th>用途</th><th class="n">金額</th><th>差し引き</th></tr>${fx.map(f=>{
+    const p=fixedPaid(curFY,f);
+    return`<tr><td>${f.month}月</td><td>${esc(f.purpose)}</td><td class="n">${yen(f.amount)}</td><td>${p?'<span class="tag paid">差引済</span>':`<span class="tag">${md(applyDate(curFY,f.month))}に差引</span>`}</td></tr>`}).join('')}</table></div>`
+    :'<p class="muted">固定費はまだ登録されていません。「固定費」タブから登録できます。</p>';
+  // 最近
+  const rec=[...y.expenses].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  $('#recent').innerHTML=rec.length?`<table>${rec.map(e=>`<tr><td>${e.date.slice(5).replace('-','/')}</td><td>${esc(e.purpose)}</td><td class="n">${yen(e.amount)}</td></tr>`).join('')}</table>`:'<p class="muted">まだ支出はありません。</p>';
+}
+
+/* 支出 */
+let editingId=null;
+function resetExpForm(){editingId=null;$('#expForm').reset();$('#exDate').value=defaultDate();$('#exCat').value='その他';$('#exSubmit').textContent='追加';$('#expFormTitle').textContent='支出を追加';$('#exCancel').style.display='none'}
+function defaultDate(){const t=today();return fyOf(t)===curFY?t:`${curFY}-04-01`}
+function findExp(id){for(const[k,y]of Object.entries(state.years)){const i=y.expenses.findIndex(e=>e.id===id);if(i>=0)return{k,y,i}}return null}
+$('#expForm').onsubmit=e=>{
+  e.preventDefault();
+  const date=$('#exDate').value,amount=Number($('#exAmount').value);
+  if(!date||!isFinite(amount)||amount<0)return toast('日付と金額を確認してください');
+  const fy=fyOf(date);
+  let rec={id:uid(),date,purpose:$('#exPurpose').value.trim(),amount:Math.round(amount),category:$('#exCat').value,memo:$('#exMemo').value.trim(),fixedId:null};
+  if(editingId){const f=findExp(editingId);if(f){rec.id=f.y.expenses[f.i].id;rec.fixedId=f.y.expenses[f.i].fixedId;f.y.expenses.splice(f.i,1)}}
+  ensureY(fy).expenses.push(rec);
+  const msg=(editingId?'更新しました':'追加しました')+(fy!==curFY?`（${fy}年度に記録）`:'');
+  resetExpForm();commit(msg);
+};
+$('#exCancel').onclick=resetExpForm;
+function renderExp(){
+  if(!editingId&&(!$('#exDate').value||fyOf($('#exDate').value)!==curFY))$('#exDate').value=defaultDate();
+  const ps=new Set();Object.values(state.years).forEach(y=>y.expenses.forEach(e=>e.purpose&&ps.add(e.purpose)));state.fixed.forEach(f=>ps.add(f.purpose));
+  $('#purposeList').innerHTML=[...ps].map(p=>`<option value="${esc(p)}">`).join('');
+  const ex=[...Y(curFY).expenses].sort((a,b)=>a.date.localeCompare(b.date));
+  if(!ex.length){$('#expList').innerHTML='<p class="muted">この年度の支出はまだありません。</p>';return}
+  let h='<div class="tw"><table><tr><th>日付</th><th>用途</th><th>分類</th><th class="n">金額</th><th></th></tr>';
+  for(const m of FM){const list=ex.filter(e=>monthOf(e.date)===m);if(!list.length)continue;
+    h+=`<tr class="mhead"><td colspan="3">${m}月</td><td class="n">${yen(sum(list.map(e=>e.amount)))}</td><td></td></tr>`;
+    h+=list.map(e=>`<tr><td>${e.date.slice(5).replace('-','/')}</td><td>${esc(e.purpose)}${e.memo?`<div class="muted">${esc(e.memo)}</div>`:''}</td><td><span class="tag">${esc(e.category)}</span></td><td class="n">${yen(e.amount)}</td><td style="white-space:nowrap"><button class="btn s" data-edit="${e.id}">編集</button> <button class="btn s d" data-del="${e.id}">削除</button></td></tr>`).join('');
+  }
+  h+=`<tr><th colspan="3">合計</th><th class="n">${yen(spent(curFY))}</th><th></th></tr></table></div>`;
+  $('#expList').innerHTML=h;
+}
+$('#expList').onclick=e=>{
+  const d=e.target.dataset;
+  if(d.del){const f=findExp(d.del);if(f&&confirm(`「${f.y.expenses[f.i].purpose}」を削除しますか？`)){f.y.expenses.splice(f.i,1);commit('削除しました')}}
+  if(d.edit){const f=findExp(d.edit);if(!f)return;const x=f.y.expenses[f.i];editingId=x.id;
+    $('#exDate').value=x.date;$('#exPurpose').value=x.purpose;$('#exAmount').value=x.amount;$('#exCat').value=CATS.includes(x.category)?x.category:'その他';$('#exMemo').value=x.memo;
+    $('#exSubmit').textContent='更新';$('#expFormTitle').textContent='支出を編集';$('#exCancel').style.display='';window.scrollTo({top:0,behavior:'smooth'})}
+};
+
+/* 会費・繰越 */
+function renderFee(){
+  const y=Y(curFY);
+  const ae=document.activeElement;
+  const m=y.openingManual;
+  const h=`<p class="muted">大学のサークル費は次の年度に繰り越せないため、毎年度0円から始まります。年度の途中からこのサイトを使い始めた年だけ、チェックを入れてその時点の残高を入力してください。</p>
+    <label class="chk"><input type="checkbox" id="opManual" ${m?'checked':''}>この年度は途中から使い始めた</label>
+    <div style="${m?'':'display:none'}"><div class="grid" style="margin-top:8px"><div><label>使い始めた時点の残高（円）</label><input type="number" inputmode="numeric" id="opVal" value="${y.openingBalance}"></div><div><label>どちらの期の残高か</label><select id="opHalf"><option value="first" ${y.openingHalf!=='second'?'selected':''}>前期</option><option value="second" ${y.openingHalf==='second'?'selected':''}>後期</option></select></div></div>
+    <p class="muted">※この場合、すでに受け取った支給額は上に入力せず、これから支給される分だけ入力してください。</p></div>`;
+  if(!(ae&&ae.closest&&ae.closest('#openingBox')))$('#openingBox').innerHTML=h;
+  for(const[p,k]of[['first','f1'],['second','f2']]){
+    const f=y.fees[p];
+    for(const fld of['amount','date']){const el=$('#'+k+fld);if(el!==ae)el.value=fld==='date'?f.date:(f[fld]||'')}
+    $('#'+k+'total').innerHTML=feeSummary(p);
+  }
+}
+function feeSummary(h){
+  const f=Y(curFY).fees[h],fx=state.fixed.filter(x=>halfOf(x.month)===h),fxAmt=sum(fx.map(x=>x.amount)),done=fx.filter(x=>fixedPaid(curFY,x)).length;
+  return `支給額 ${yen(feeAmt(f))}${f.date?`（${f.date.replace(/-/g,'/')} 支給）`:''}`+
+    (fx.length?`<div class="muted" style="font-weight:400;font-size:13px;margin-top:4px">この期の固定費 ${yen(fxAmt)}（${fx.length}件）：${done===fx.length?'差引済':`${done}/${fx.length}件差引済（残りは使用月の3ヶ月前に差引）`}</div>`:'')+
+    (feeAmt(f)>0?`<div class="muted" style="font-weight:400;font-size:13px">${h==='second'?`前期の残り ${yen(hCarry(curFY,h))} を足した`:''}差引後の残り ${yen(hRest(curFY,h))}</div>`:'');
+}
+$('#openingBox').addEventListener('change',e=>{
+  const y=ensureY(curFY);
+  if(e.target.id==='opManual'){y.openingManual=e.target.checked;document.activeElement.blur();commit()}
+  if(e.target.id==='opVal'){y.openingBalance=Math.round(Number(e.target.value)||0);commit('開始時点の残高を保存しました')}
+  if(e.target.id==='opHalf'){y.openingHalf=e.target.value;commit()}
+});
+for(const[p,k]of[['first','f1'],['second','f2']])for(const fld of['amount','date']){
+  $('#'+k+fld).addEventListener('input',e=>{const f=ensureY(curFY).fees[p];f[fld]=fld==='date'?e.target.value:Math.max(0,Math.round(Number(e.target.value)||0))});
+  $('#'+k+fld).addEventListener('change',()=>{
+    if(fld!=='amount')return commit('支給日を保存しました');
+    commit(`${HALF[p].name}の支給額を保存しました`);
+  });
+}
+
+/* 固定費 */
+$('#fxForm').onsubmit=e=>{e.preventDefault();const a=Math.round(Number($('#fxAmount').value));if(!isFinite(a)||a<0)return;
+  const f={id:uid(),month:Number($('#fxMonth').value),purpose:$('#fxPurpose').value.trim(),amount:a};state.fixed.push(f);$('#fxForm').reset();
+  const n=applyDue();
+  commit('固定費を登録しました'+(n?'（差し引くタイミングを過ぎているため、今年度から差し引きました）':`（${md(applyDate(fyOf(today()),f.month))}に差し引かれます）`))};
+function renderFix(){
+  const fx=[...state.fixed].sort((a,b)=>fmIdx(a.month)-fmIdx(b.month));
+  $('#fxList').innerHTML=fx.length?`<div class="tw"><table><tr><th>月</th><th>用途</th><th class="n">金額</th><th></th></tr>${fx.map(f=>`<tr><td>${f.month}月<div class="muted">${HALF[halfOf(f.month)].name}</div></td><td>${esc(f.purpose)}</td><td class="n">${yen(f.amount)}</td><td style="white-space:nowrap"><button class="btn s" data-fedit="${f.id}">金額変更</button> <button class="btn s d" data-fdel="${f.id}">削除</button></td></tr>`).join('')}<tr><th colspan="2">年間合計</th><th class="n">${yen(sum(fx.map(f=>f.amount)))}</th><th></th></tr></table></div>`:'<p class="muted">まだありません。</p>';
+}
+$('#fxList').onclick=e=>{const d=e.target.dataset;
+  if(d.fdel){const i=state.fixed.findIndex(f=>f.id===d.fdel);if(i>=0&&confirm(`「${state.fixed[i].purpose}」を固定費から外しますか？\n（記録済みの支出は残ります）`)){state.fixed.splice(i,1);commit('削除しました')}}
+  if(d.fedit){const f=state.fixed.find(x=>x.id===d.fedit);const v=prompt(`「${f.purpose}」の新しい金額`,f.amount);if(v!=null&&isFinite(Number(v))&&v!==''){f.amount=Math.round(Number(v));const ex=Y(curFY).expenses.find(e=>e.fixedId===f.id);if(ex)ex.amount=f.amount;commit('変更しました'+(ex?`（${curFY}年度の差引額も更新）`:''))}}
+};
+
+/* 前年比較 */
+function niceMax(v){if(v<=0)return 1;const p=10**Math.floor(Math.log10(v));return[1,2,2.5,5,10].find(k=>k*p>=v)*p}
+function diffCell(c,p){const d=c-p;return`<td class="n ${d>0?'neg':d<0?'pos':''}">${d>0?'+':''}${yen(d)}</td>`}
+function renderCmp(){
+  const c=curFY,p=curFY-1,cy=Y(c),py=Y(p);
+  $('#cmpTitle').textContent=`${p}年度と${c}年度の比較`;
+  const rows=[['前期 支給額',hBudget(p,'first'),hBudget(c,'first')],['前期 使った金額',hSpent(p,'first'),hSpent(c,'first')],['前期の残り（後期へ）',hRest(p,'first'),hRest(c,'first')],['後期 支給額',feeAmt(Y(p).fees.second),feeAmt(Y(c).fees.second)],['後期 使った金額',hSpent(p,'second'),hSpent(c,'second')],['年度末の使い残し',ending(p),ending(c)]];
+  const rt=x=>budget(x)>0?(spent(x)/budget(x)*100).toFixed(0)+'%':'-';
+  $('#cmpSummary').innerHTML=`<table><tr><th></th><th class="n">${p}年度</th><th class="n">${c}年度</th><th class="n">差</th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td class="n">${yen(r[1])}</td><td class="n">${yen(r[2])}</td><td class="n">${(r[2]-r[1]>0?'+':'')+yen(r[2]-r[1])}</td></tr>`).join('')}<tr><td>使用率</td><td class="n">${rt(p)}</td><td class="n">${rt(c)}</td><td></td></tr></table>${state.years[p]?'':'<p class="muted">前年度のデータはまだありません。</p>'}`;
+  const mA=FM.map(m=>sum(py.expenses.filter(e=>monthOf(e.date)===m).map(e=>e.amount)));
+  const mB=FM.map(m=>sum(cy.expenses.filter(e=>monthOf(e.date)===m).map(e=>e.amount)));
+  $('#cmpChart').innerHTML=chart(mA,mB);
+  $('#cmpMonth').innerHTML=`<table><tr><th>月</th><th class="n">前年度</th><th class="n">今年度</th><th class="n">差</th></tr>${FM.map((m,i)=>`<tr><td>${m}月</td><td class="n">${yen(mA[i])}</td><td class="n">${yen(mB[i])}</td>${diffCell(mB[i],mA[i])}</tr>`).join('')}<tr><th>合計</th><th class="n">${yen(sum(mA))}</th><th class="n">${yen(sum(mB))}</th>${diffCell(sum(mB),sum(mA))}</tr></table>`;
+  const grp=(key)=>{const keys=new Set([...py.expenses,...cy.expenses].map(e=>e[key]||'（未入力）'));
+    const r=[...keys].map(k=>[k,sum(py.expenses.filter(e=>(e[key]||'（未入力）')===k).map(e=>e.amount)),sum(cy.expenses.filter(e=>(e[key]||'（未入力）')===k).map(e=>e.amount))]).sort((a,b)=>Math.max(b[1],b[2])-Math.max(a[1],a[2]));
+    return r.length?`<table><tr><th></th><th class="n">前年度</th><th class="n">今年度</th><th class="n">差</th></tr>${r.map(x=>`<tr><td>${esc(x[0])}</td><td class="n">${yen(x[1])}</td><td class="n">${yen(x[2])}</td>${diffCell(x[2],x[1])}</tr>`).join('')}</table>`:'<p class="muted">支出データがありません。</p>'};
+  $('#cmpCat').innerHTML=grp('category');$('#cmpPurpose').innerHTML=grp('purpose');
+}
+function chart(a,b){
+  const W=680,H=230,pl=56,pr=8,pt=10,pb=26,ih=H-pt-pb,max=niceMax(Math.max(...a,...b)),gw=(W-pl-pr)/12,bw=gw*.34;
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;font-size:11px" role="img" aria-label="月別支出の比較">`;
+  for(let i=0;i<=4;i++){const y=pt+ih-ih*i/4;s+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="#e2e6ee"/><text x="${pl-6}" y="${y+4}" text-anchor="end" fill="#6b7489">${(max*i/4/1000).toLocaleString('ja-JP')}千</text>`}
+  FM.forEach((m,i)=>{const x=pl+i*gw+gw/2,ha=ih*a[i]/max,hb=ih*b[i]/max;
+    s+=`<rect x="${x-bw-1}" y="${pt+ih-ha}" width="${bw}" height="${ha}" rx="2" fill="#b8c0cf"><title>${m}月 前年度 ${yen(a[i])}</title></rect>`;
+    s+=`<rect x="${x+1}" y="${pt+ih-hb}" width="${bw}" height="${hb}" rx="2" fill="#2f6fed"><title>${m}月 今年度 ${yen(b[i])}</title></rect>`;
+    s+=`<text x="${x}" y="${H-8}" text-anchor="middle" fill="#6b7489">${m}月</text>`});
+  return s+'</svg>';
+}
+
+/* 設定 */
+function renderSet(){
+  if(document.activeElement!==$('#circleName'))$('#circleName').value=state.circleName;
+  const snaps=getSnaps();
+  $('#snapList').innerHTML=snaps.length?`<table>${snaps.map((s,i)=>`<tr><td>${fmtTime(s.t)} 時点の直前データ</td><td><button class="btn s" data-snap="${i}">この状態に戻す</button></td></tr>`).join('')}</table>`:'<p class="muted">まだありません（編集すると自動で作られます）。</p>';
+}
+$('#circleName').onchange=e=>{state.circleName=e.target.value.trim();commit()};
+function fillCfg(){$('#ghOwner').value=cfg.owner;$('#ghRepo').value=cfg.repo;$('#ghBranch').value=cfg.branch;$('#ghPath').value=cfg.path;$('#ghToken').value=cfg.token;$('#ghAuto').checked=cfg.auto!==false}
+$('#ghSave').onclick=()=>{
+  const n={owner:$('#ghOwner').value.trim(),repo:$('#ghRepo').value.trim(),branch:$('#ghBranch').value.trim()||'data',path:$('#ghPath').value.trim().replace(/^\/+/,'')||'data/circle-fees.json',token:$('#ghToken').value.trim(),auto:$('#ghAuto').checked};
+  const changed=n.owner!==cfg.owner||n.repo!==cfg.repo||n.branch!==cfg.branch||n.path!==cfg.path;
+  cfg=n;localStorage.setItem(LS_CFG,JSON.stringify(cfg));if(changed)setSynced(null,0);fillCfg();pullRemote(false);
+};
+$('#ghAuto').onchange=e=>{cfg.auto=e.target.checked;localStorage.setItem(LS_CFG,JSON.stringify(cfg))};
+$('#ghPush').onclick=()=>cfgOK()?pushRemote():toast('GitHubの設定を入力してください');
+$('#ghPull').onclick=()=>pullRemote(true);
+$('#ghClear').onclick=()=>{if(confirm('この端末からGitHubの設定（トークン含む）を消しますか？\nデータは消えません。')){localStorage.removeItem(LS_CFG);cfg={owner:'',repo:'',branch:'data',path:'data/circle-fees.json',token:'',auto:true};setSynced(null,0);fillCfg();setStatus('端末のみに保存')}};
+$('#histLoad').onclick=async()=>{
+  if(!cfgOK())return toast('GitHubの設定を入力してください');
+  $('#histList').innerHTML='<p class="muted">読み込み中…</p>';
+  try{const list=await gh(`commits?path=${encodeURIComponent(cfg.path)}&sha=${encodeURIComponent(cfg.branch||'data')}&per_page=30`);
+    $('#histList').innerHTML=list.length?`<table>${list.map(c=>`<tr><td>${new Date(c.commit.author.date).toLocaleString('ja-JP')}</td><td class="muted">${esc(c.commit.message)}</td><td><button class="btn s" data-ref="${c.sha}">この版に戻す</button></td></tr>`).join('')}</table>`:'<p class="muted">履歴がありません。</p>';
+  }catch(e){$('#histList').innerHTML=`<p class="neg">取得できませんでした：${esc(e.message)}</p>`}
+};
+$('#histList').onclick=async e=>{const ref=e.target.dataset.ref;if(!ref)return;
+  try{const r=await ghGet(ref);const d=normalize(JSON.parse(b64dec(r.content)));
+    if(!confirm('この版のデータに戻しますか？\n（戻した内容は新しい版としてGitHubに保存され、今の内容も履歴に残ります）'))return;
+    replaceState(d);commit('過去の版に戻しました');
+  }catch(err){toast('復元できませんでした：'+err.message)}};
+$('#snapList').onclick=e=>{const i=e.target.dataset.snap;if(i==null)return;
+  try{const d=normalize(JSON.parse(getSnaps()[i].d));if(confirm('この状態に戻しますか？')){replaceState(d);commit('バックアップから戻しました')}}catch(err){toast('このバックアップは読み込めません')}};
+$('#exportBtn').onclick=()=>{const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`circle-fees-${today()}.json`;a.click();URL.revokeObjectURL(a.href)};
+$('#importFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const d=normalize(JSON.parse(await f.text()));if(confirm('このファイルの内容で置き換えますか？\n（今のデータは自動バックアップに残ります）')){replaceState(d);commit('読み込みました')}}
+  catch(err){toast('読み込めませんでした：'+err.message)}};
+
+/* 起動 */
+fillCfg();resetExpForm();render();
+{const n=applyDue();if(n)commit(`固定費${n}件を差し引きました`)}
+if(cfgOK())pullRemote(false);
+</script>
+</body>
+</html>
